@@ -130,10 +130,12 @@ function Mirror:CreateMixins()
 		self:CopyVisuals(icon)
 	end
 
+	-- Note: pools on this client also call the reset (and so OnReleased) on brand-new
+	-- pins, before OnLoad has run. Nothing here may assume OnLoad happened.
 	function PinMixin:OnReleased()
 		self:RestoreBorrowed()
 		self.source = nil
-		for _, t in ipairs(self.textures) do t:Hide() end
+		for _, t in ipairs(self.textures or {}) do t:Hide() end
 	end
 
 	function PinMixin:CopyVisuals(icon)
