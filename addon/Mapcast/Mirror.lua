@@ -240,22 +240,60 @@ function Mirror:CreateMixins()
 		local map = self:GetMap()
 		local uiMapID = map:GetMapID()
 		if not uiMapID then return end
+		-- Diagnostics: kept small and saved to MapcastDB.debug (see /mapcast debug).
+		local stats = { mapID = uiMapID, time = date("%H:%M:%S"), libs = {} }
+		Mirror.stats = stats
 		for _, entry in ipairs(libs) do
-			if not QuestieHidesHere(entry, uiMapID) then
+			local s = { name = entry.name, registered = 0, hidden = 0, notHere = 0, placed = 0 }
+			table.insert(stats.libs, s)
+			if QuestieHidesHere(entry, uiMapID) then
+				s.questieHidesOnContinents = true
+			else
 				for icon, data in pairs(entry.pins.worldmapPins) do
-					if not icon.hidden and data.x and data.y then
+					s.registered = s.registered + 1
+					if icon.hidden then
+						s.hidden = s.hidden + 1
+					elseif data.x and data.y then
 						local ok, x, y = pcall(PlacePin, entry, data, uiMapID)
-						if ok and x and y and x >= 0 and x <= 1 and y >= 0 and y <= 1 then
-							map:AcquirePin(TEMPLATE, icon, x, y)
+						if not ok then
+							s.placeError = s.placeError or tostring(x)
+						elseif x and y and x >= 0 and x <= 1 and y >= 0 and y <= 1 then
+							local aok, err = pcall(map.AcquirePin, map, TEMPLATE, icon, x, y)
+							if aok then
+								s.placed = s.placed + 1
+							else
+								s.acquireError = s.acquireError or tostring(err)
+							end
+						else
+							s.notHere = s.notHere + 1
 						end
 					end
 				end
 			end
 		end
+		ns.db.debug = stats
 	end
 
 	function provider:OnMapChanged()
 		self:RefreshAllData()
+	end
+end
+
+function Mirror:PrintDebug()
+	local libNames = {}
+	for _, e in ipairs(libs) do table.insert(libNames, e.name) end
+	ns.Print("pin libraries found: " .. (#libNames > 0 and table.concat(libNames, ", ") or "none"))
+	local s = self.stats
+	if not s then
+		ns.Print("the mirror hasn't refreshed yet.")
+		return
+	end
+	ns.Print(("last refresh %s on map %s:"):format(s.time, tostring(s.mapID)))
+	for _, l in ipairs(s.libs) do
+		ns.Print(("  %s: %d registered, %d hidden, %d not on this map, %d drawn%s%s"):format(l.name, l.registered,
+			l.hidden, l.notHere, l.placed,
+			l.placeError and (" |cffff5555place error: " .. l.placeError .. "|r") or "",
+			l.acquireError and (" |cffff5555draw error: " .. l.acquireError .. "|r") or ""))
 	end
 end
 

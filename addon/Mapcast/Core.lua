@@ -115,6 +115,10 @@ local function HandleSlash(msg)
 		map:ResetLayout(); ns.Print("position, size and scale reset.")
 	elseif cmd == "companion" then
 		ns.UI:ShowCompanionPopup(true)
+	elseif cmd == "debug" then
+		ns.Mirror:DiscoverLibs()
+		ns.Mirror:Refresh()
+		ns.Mirror:PrintDebug()
 	elseif cmd == "options" or cmd == "config" then
 		ns.UI:OpenOptions()
 	else
