@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="MapcastCompanion.Tests/MapcastCompanion.Tests.csproj" />
+  <Project Path="MapcastCompanion/MapcastCompanion.csproj" />
+</Solution>
