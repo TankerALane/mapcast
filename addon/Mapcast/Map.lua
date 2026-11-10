@@ -154,6 +154,11 @@ local CanvasOverrides = {}
 
 function CanvasOverrides:OnLoad()
 	MapCanvasMixin.OnLoad(self)
+	self:MapcastSetup()
+end
+
+-- Idempotent; also called after creation in case the XML mixin order differs.
+function CanvasOverrides:MapcastSetup()
 	self:SetShouldZoomInOnClick(false)
 	self:SetShouldPanOnClick(false)
 	self:SetShouldNavigateOnClick(true) -- left click: open sub-zone, right click: go up
@@ -163,13 +168,9 @@ end
 
 function CanvasOverrides:OnShow()
 	local id = Map:GetPlayerMapID()
-	if Map:IsFollowing() and id then
+	if not self.mapID or (Map:IsFollowing() and id) then
 		self.mcInternal = true
-		self:SetMapID(id)
-		self.mcInternal = false
-	elseif not self.mapID and id then
-		self.mcInternal = true
-		self:SetMapID(id)
+		self:SetMapID(id or Map:GetFallbackMapID())
 		self.mcInternal = false
 	end
 	MapCanvasMixin.OnShow(self)
@@ -266,6 +267,11 @@ function Map:GetPlayerMapID()
 	return C_Map.GetBestMapForUnit("player")
 end
 
+-- Used before the player's position is known (very early login, loading screens).
+function Map:GetFallbackMapID()
+	return (C_Map.GetFallbackWorldMapID and C_Map.GetFallbackWorldMapID()) or 947
+end
+
 local function OverlayStrata(strata)
 	for i, s in ipairs(STRATA_ORDER) do
 		if s == strata then
@@ -350,6 +356,8 @@ function Map:CreateFrames()
 	-- Canvas
 	local canvas = CreateFrame("Frame", "MapcastMapCanvas", f, "MapcastCanvasTemplate")
 	self.canvas = canvas
+	Mixin(canvas, CanvasOverrides) -- make sure our overrides win whatever order XML applied mixins in
+	canvas:MapcastSetup()
 	canvas:AddMapcastProviders()
 	ns.Mirror:Attach(canvas)
 	canvas:SetScript("OnSizeChanged", function(c) c:OnFrameSizeChanged() end)
@@ -593,7 +601,10 @@ function Map:IsShownSaved() return ns.db.shown end
 
 function Map:SetShownSaved(shown)
 	ns.db.shown = shown and true or false
-	if self.frame then self.frame:SetShown(ns.db.shown) end
+	if self.frame then
+		self.frame:SetShown(ns.db.shown)
+		if ns.db.shown and self:IsFollowing() then self:SyncToPlayer() end
+	end
 end
 
 function Map:SetLocked(locked)

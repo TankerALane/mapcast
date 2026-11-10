@@ -85,7 +85,7 @@ jobs:
         run: |
           ver="${GITHUB_REF_NAME#v}"
           # Section of CHANGELOG.md for this version (between "## [ver]" and the next "## ").
-          awk -v v="$ver" '$0 ~ "^## \[" v "\]" {on=1; next} /^## / {if (on) exit} on' CHANGELOG.md > notes.md
+          awk -v h="## [$ver]" 'index($0, h) == 1 {on=1; next} /^## / {if (on) exit} on' CHANGELOG.md > notes.md
           cat >> notes.md <<NOTES
 
           ### Downloads
