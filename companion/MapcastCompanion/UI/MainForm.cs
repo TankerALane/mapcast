@@ -222,7 +222,15 @@ public sealed class MainForm : Form
         }
         _menu.Items.Add(source);
 
-        var off = new ToolStripMenuItem("Off-screen map");
+        var off = new ToolStripMenuItem("Game window");
+        var wow = (_target ?? WindowFinder.FindWow())?.Handle ?? IntPtr.Zero;
+        var gameScreen = wow != IntPtr.Zero ? Screen.FromHandle(wow) : null;
+        foreach (var scr in Screen.AllScreens.Where(s => gameScreen == null || s.DeviceName != gameScreen.DeviceName))
+        {
+            var target = scr;
+            off.DropDownItems.Add(new ToolStripMenuItem($"Span game onto {DescribeScreen(scr, gameScreen)} (map there, fully interactive)", null,
+                async (_, _) => await SpanAsync(target)) { Enabled = gameScreen != null });
+        }
         off.DropDownItems.Add(new ToolStripMenuItem("Hide the map off-screen (extend game window)", null, async (_, _) => await ExtendGameWindowAsync()));
         off.DropDownItems.Add(new ToolStripMenuItem("Restore game window", null, (_, _) => RestoreGameWindow()) { Enabled = _settings.GameWindowBefore is { Length: 4 } });
         off.DropDownItems.Add(new ToolStripSeparator());
@@ -317,11 +325,7 @@ public sealed class MainForm : Form
             MessageBox.Show(this, result.Message, "Mapcast Companion", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             return;
         }
-        // Remember where the window was, unless it was already extended by us.
-        var monitor = Screen.FromHandle(target.Handle).Bounds;
-        if (_settings.GameWindowBefore == null || before.Height <= monitor.Height + 100)
-            _settings.GameWindowBefore = new[] { before.X, before.Y, before.Width, before.Height };
-        Save();
+        RememberWindow(before);
 
         await Task.Delay(800); // let the game process the resize
         var client = GameWindowLayout.GetClientRectangle(target.Handle);
@@ -336,29 +340,87 @@ public sealed class MainForm : Form
                 "Mapcast Companion", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             return;
         }
+        ShowCommandDialog("Off-screen map",
+            $"The game window now reaches {strip} px {(result.Edge == StripEdge.Top ? "above" : "below")} your monitor, where no screen shows it.",
+            command,
+            "Mapcast moves its map into the hidden strip and keeps the rest of the game on your monitor.");
+        _engine?.RequestDetect();
+    }
+
+    private async Task SpanAsync(Screen mapScreen)
+    {
+        var target = _target ?? WindowFinder.FindWow();
+        if (target == null)
+        {
+            MessageBox.Show(this, "Start World of Warcraft first, in Windowed mode.", "Mapcast Companion");
+            return;
+        }
+        var result = GameWindowLayout.Span(target.Handle, mapScreen, out var before);
+        if (!result.Ok)
+        {
+            MessageBox.Show(this, result.Message, "Mapcast Companion", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return;
+        }
+        RememberWindow(before);
+
+        await Task.Delay(800);
+        var client = GameWindowLayout.GetClientRectangle(target.Handle);
+        if (client.Width < result.Client.Width - 2 || client.Height < result.Client.Height - 2)
+        {
+            MessageBox.Show(this,
+                $"The game window was asked to become {result.Client.Width} x {result.Client.Height} but it is {client.Width} x {client.Height}. " +
+                "The game (or Windows) did not allow a window that large.\n\nUse \"Restore game window\" to put it back.",
+                "Mapcast Companion", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return;
+        }
+        ShowCommandDialog("Span game window",
+            "The game window now covers both monitors.",
+            result.Command,
+            "Mapcast keeps the game on its monitor and fills the other one with an interactive map. " +
+            "Mapcast remembers this; you can close Mapcast Companion now. To undo: Game window > Restore game window.");
+    }
+
+    // Remember the window's normal placement for "Restore", but not a layout we made ourselves.
+    private void RememberWindow(Rectangle before)
+    {
+        var mon = Screen.FromRectangle(before).Bounds;
+        bool normal = before.Width <= mon.Width + 100 && before.Height <= mon.Height + 100;
+        if (_settings.GameWindowBefore == null || normal)
+            _settings.GameWindowBefore = new[] { before.X, before.Y, before.Width, before.Height };
+        Save();
+    }
+
+    private static string DescribeScreen(Screen s, Screen? game)
+    {
+        string where = "";
+        if (game != null)
+        {
+            var g = game.Bounds; var b = s.Bounds;
+            where = b.Left >= g.Right ? "right" : b.Right <= g.Left ? "left" : b.Bottom <= g.Top ? "above" : b.Top >= g.Bottom ? "below" : "";
+        }
+        string name = s.DeviceName.Replace(@"\\.\", "");
+        return $"{name} ({(where.Length > 0 ? where + ", " : "")}{s.Bounds.Width}x{s.Bounds.Height})";
+    }
+
+    private void ShowCommandDialog(string title, string intro, string command, string note)
+    {
         using var dlg = new Form
         {
-            Text = "Off-screen map", FormBorderStyle = FormBorderStyle.FixedDialog, MaximizeBox = false, MinimizeBox = false,
-            StartPosition = FormStartPosition.CenterParent, ClientSize = new Size(460, 190), Icon = AppIcon.Load(),
+            Text = title, FormBorderStyle = FormBorderStyle.FixedDialog, MaximizeBox = false, MinimizeBox = false,
+            StartPosition = FormStartPosition.CenterParent, ClientSize = new Size(480, 210), Icon = AppIcon.Load(), TopMost = true,
         };
         var label = new Label
         {
-            Text = $"The game window now reaches {strip} px {(result.Edge == StripEdge.Top ? "above" : "below")} your monitor, where no screen shows it.\n\n" +
-                   "Now type this in the game chat (it is selected; press Ctrl+C to copy):",
-            Location = new Point(12, 12), Size = new Size(436, 70),
+            Text = intro + "\n\nNow type this in the game chat (it is selected; press Ctrl+C to copy, then paste it in game with Ctrl+V):",
+            Location = new Point(12, 12), Size = new Size(456, 70),
         };
-        var box = new TextBox { Text = command, ReadOnly = true, Location = new Point(12, 88), Width = 436, Font = new Font("Consolas", 11f) };
-        var note = new Label
-        {
-            Text = "Mapcast moves its map into the hidden strip and keeps the rest of the game on your monitor.",
-            Location = new Point(12, 120), Size = new Size(436, 34),
-        };
-        var ok = new Button { Text = "OK", DialogResult = DialogResult.OK, Location = new Point(373, 155) };
-        dlg.Controls.AddRange(new Control[] { label, box, note, ok });
+        var box = new TextBox { Text = command, ReadOnly = true, Location = new Point(12, 88), Width = 456, Font = new Font("Consolas", 11f) };
+        var info = new Label { Text = note, Location = new Point(12, 122), Size = new Size(456, 48) };
+        var ok = new Button { Text = "OK", DialogResult = DialogResult.OK, Location = new Point(393, 175) };
+        dlg.Controls.AddRange(new Control[] { label, box, info, ok });
         dlg.AcceptButton = ok;
         dlg.Shown += (_, _) => { box.Focus(); box.SelectAll(); };
         dlg.ShowDialog(this);
-        _engine?.RequestDetect();
     }
 
     private void RestoreGameWindow()
@@ -368,7 +430,7 @@ public sealed class MainForm : Form
         GameWindowLayout.MoveTo(target.Handle, new Rectangle(b[0], b[1], b[2], b[3]));
         _settings.GameWindowBefore = null;
         Save();
-        MessageBox.Show(this, "Game window restored. In game, type /mapcast offscreen off to bring the map back on screen.", "Mapcast Companion");
+        MessageBox.Show(this, "Game window restored. In game, type /mapcast normal to put the game and map back to normal.", "Mapcast Companion");
     }
 
     private void FitToFrame()
@@ -389,8 +451,8 @@ public sealed class MainForm : Form
             "and nothing is captured while the game is minimised.\n\n" +
             "The Mapcast frame must stay visible in the game window, because this app can only copy what is on screen. " +
             "Tuck it into a corner and use a smaller capture size in Mapcast's options to keep it out of the way, " +
-            "or use Off-screen map to move it into a part of the game window that no monitor shows.\n\n" +
-            "Mapcast Companion only captures the screen (and, if you ask it to, resizes the game window for Off-screen map). " +
+            "or use Game window > Span (map on your second monitor, interactive) or Hide the map off-screen.\n\n" +
+            "Mapcast Companion only captures the screen (and, if you ask it to, resizes the game window for the Game window options). " +
             "It never reads game memory, sends input, or automates anything.",
             "How Mapcast Companion works");
     }

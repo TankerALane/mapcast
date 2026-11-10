@@ -93,9 +93,14 @@ local function noop() end
 -- Capture layout (pixel exact, magenta border) is used in capture mode and
 -- always in off-screen mode.
 local function IsCapture()
-	return ns.db.captureMode or ns.Offscreen:IsActive()
+	return ns.db.captureMode or ns.Layout:IsOffscreen()
 end
 ns.IsCapture = IsCapture
+
+-- Locked, or filling the second monitor in span mode: no moving or resizing.
+local function IsPinned()
+	return ns.db.locked or ns.Layout:IsSpan()
+end
 
 ---------------------------------------------------------------------------
 -- Pin safety
@@ -332,7 +337,7 @@ function Map:Initialize()
 	ns.Mirror:CreateMixins()
 
 	self:CreateFrames()
-	ns.Offscreen:Initialize()
+	ns.Layout:Initialize()
 	self:ApplyLayout()
 	self:SetShownSaved(ns.db.shown)
 end
@@ -389,7 +394,7 @@ function Map:CreateFrames()
 	hbg:SetAllPoints()
 	hbg:SetColorTexture(0.055, 0.118, 0.180, 0.95) -- brand navy #0E1E2E
 	header:SetScript("OnMouseDown", function(_, button)
-		if button == "LeftButton" and not db.locked then f:StartMoving() end
+		if button == "LeftButton" and not IsPinned() then f:StartMoving() end
 	end)
 	header:SetScript("OnMouseUp", function() Map:StopMoving() end)
 
@@ -423,7 +428,7 @@ function Map:CreateFrames()
 	grip:SetNormalTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Up")
 	grip:SetHighlightTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Highlight")
 	grip:SetPushedTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Down")
-	grip:SetScript("OnMouseDown", function() if not db.locked and not IsCapture() then f:StartSizing("BOTTOMRIGHT") end end)
+	grip:SetScript("OnMouseDown", function() if not IsPinned() and not IsCapture() then f:StartSizing("BOTTOMRIGHT") end end)
 	grip:SetScript("OnMouseUp", function() Map:StopMoving() end)
 
 	-- Capture-mode marker border: four solid textures, pixel exact.
@@ -479,7 +484,7 @@ function Map:HookInteraction(sc)
 	sc:HookScript("OnMouseDown", function(_, button)
 		local x, y = GetCursorPosition()
 		Map.downX, Map.downY = x, y
-		if button == "LeftButton" and IsAltKeyDown() and not ns.db.locked then
+		if button == "LeftButton" and IsAltKeyDown() and not IsPinned() and not ns.Layout:IsOffscreen() then
 			Map.altMoving = true
 			Map.frame:StartMoving()
 		end
@@ -516,7 +521,7 @@ end
 function Map:StopMoving()
 	local f = self.frame
 	f:StopMovingOrSizing()
-	if ns.Offscreen:IsActive() then self:ApplyLayout() return end
+	if ns.Layout:IsActive() then self:ApplyLayout() return end
 	if not IsCapture() then
 		ns.db.width, ns.db.height = f:GetSize()
 	end
@@ -528,9 +533,14 @@ function Map:ApplyPosition()
 	local f, db = self.frame, ns.db
 	local s = f:GetScale()
 	f:ClearAllPoints()
-	if ns.Offscreen:IsActive() then
+	if ns.Layout:IsSpan() and ns.Layout:MapRect() then
+		-- Fill the second monitor. UIParent's top-left is the game monitor's top-left.
+		local x, y = ns.Layout:MapRect()
+		local upp = UnitsPerPixel(f)
+		f:SetPoint("TOPLEFT", UIParent, "TOPLEFT", x * upp, -y * upp)
+	elseif ns.Layout:IsOffscreen() then
 		-- Inside the hidden strip, pixel aligned, centred vertically, 8 px from the left.
-		local px = ns.Offscreen:Geometry() or 0
+		local px = ns.Layout:StripPixels() or 0
 		local upp = UnitsPerPixel(f)
 		local h = math.floor(f:GetHeight() / upp + 0.5)
 		local gap = math.max(0, math.floor((px - h) / 2))
@@ -558,7 +568,7 @@ function Map:ApplyLayout()
 	if not f then return end
 
 	-- Off-screen: no parent, so hiding the UI (Alt+Z) or UIParent's scale don't affect it.
-	local wantParent = ns.Offscreen:IsActive() and nil or UIParent
+	local wantParent = ns.Layout:IsOffscreen() and nil or UIParent
 	if f:GetParent() ~= wantParent then f:SetParent(wantParent) end
 
 	local strata = db.strata or "MEDIUM"
@@ -582,16 +592,24 @@ function Map:ApplyLayout()
 		self.grip:Hide()
 		for _, t in ipairs(self.border) do t:Show() end
 	else
+		local pinned = IsPinned()
 		f:SetScale(db.scale)
-		f:SetSize(db.width, db.height)
+		local _, _, mw, mh = ns.Layout:MapRect()
+		if ns.Layout:IsSpan() and mw then
+			local upp = UnitsPerPixel(f)
+			f:SetSize(mw * upp, mh * upp)
+		else
+			f:SetSize(db.width, db.height)
+		end
 		f:SetBackdropColor(0.031, 0.078, 0.125, 0.92)
-		f:SetBackdropBorderColor(0.298, 0.827, 0.714, db.locked and 0.25 or 0.6)
-		local top = db.locked and 1 or (HEADER_HEIGHT + 1)
+		f:SetBackdropBorderColor(0.298, 0.827, 0.714, pinned and 0.25 or 0.6)
+		local top = pinned and 1 or (HEADER_HEIGHT + 1)
 		canvas:SetPoint("TOPLEFT", 1, -top)
 		canvas:SetPoint("BOTTOMRIGHT", -1, 1)
-		self.header:SetShown(not db.locked)
+		self.header:SetShown(not pinned)
 		self.header:SetAlpha(1)
-		self.grip:SetShown(not db.locked)
+		self.header.Lock:SetShown(not ns.Layout:IsSpan())
+		self.grip:SetShown(not pinned)
 		for _, t in ipairs(self.border) do t:Hide() end
 	end
 	self:ApplyPosition()
@@ -797,7 +815,7 @@ end
 ---------------------------------------------------------------------------
 function Map:OnEvent(event)
 	if event == "UI_SCALE_CHANGED" or event == "DISPLAY_SIZE_CHANGED" then
-		if ns.Offscreen:IsActive() then ns.Offscreen:Apply() end
+		if ns.Layout:IsActive() then ns.Layout:Apply() end
 		self:ApplyLayout()
 		return
 	end
@@ -823,7 +841,7 @@ function Map:FastTick()
 	if not f:IsVisible() then return end
 
 	-- Locked: show the header as an overlay only while hovering.
-	if db.locked and not IsCapture() then
+	if IsPinned() and not IsCapture() then
 		local over = f:IsMouseOver()
 		if over ~= self.headerHover then
 			self.headerHover = over
@@ -838,7 +856,7 @@ end
 
 function Map:SlowTick()
 	local f, db = self.frame, ns.db
-	ns.Offscreen:Check()
+	ns.Layout:Check()
 	if not f:IsVisible() then return end
 	if self.followPausedAt and db.autoResume > 0 and not f:IsMouseOver()
 		and GetTime() - self.followPausedAt >= db.autoResume then

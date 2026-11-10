@@ -90,8 +90,9 @@ local HELP = {
 	"/mapcast follow - toggle auto-follow of your current zone",
 	"/mapcast capture - toggle capture mode (for Mapcast Companion)",
 	"/mapcast reset - reset position, size and scale",
-	"/mapcast offscreen top|bottom <pixels> - keep the map in a hidden strip of the game window (see Mapcast Companion)",
-	"/mapcast offscreen off - bring the map back on screen",
+	"/mapcast span ... - map fills your second monitor (Mapcast Companion > Game window shows the exact command)",
+	"/mapcast offscreen top|bottom <pixels> - keep the map in a hidden strip of the game window",
+	"/mapcast normal - turn span / off-screen mode off",
 	"/mapcast companion - how to show Mapcast on a second monitor",
 	"/mapcast options - open the options panel",
 }
@@ -120,7 +121,7 @@ local function HandleSlash(msg)
 		local arg1, arg2 = (msg or ""):lower():match("^%s*%S+%s*(%S*)%s*(%S*)")
 		local edge, px
 		if arg1 == "off" then
-			ns.Offscreen:SetMode(nil)
+			ns.Layout:SetNormal()
 			return
 		elseif arg1 == "top" or arg1 == "bottom" then
 			edge, px = arg1:upper(), tonumber(arg2)
@@ -137,7 +138,29 @@ local function HandleSlash(msg)
 			return
 		end
 		ns.db.offscreenLastEdge = edge
-		ns.Offscreen:SetMode(edge, px and math.floor(px))
+		ns.Layout:SetOffscreen(edge, px and math.floor(px))
+	elseif cmd == "span" then
+		-- /mapcast span l,t,r,b l,t,r,b   (from Mapcast Companion)
+		local a, b = (msg or ""):lower():match("^%s*%S+%s*(%S*)%s*(%S*)")
+		if a == "off" then
+			ns.Layout:SetNormal()
+			return
+		end
+		local function Parse(str)
+			local v = {}
+			for n in (str or ""):gmatch("%-?%d+") do table.insert(v, tonumber(n)) end
+			if #v ~= 4 then return nil end
+			for _, n in ipairs(v) do if n < 0 or n > 20000 then return nil end end
+			return v
+		end
+		local game, mapInsets = Parse(a), Parse(b)
+		if not game or not mapInsets then
+			ns.Print("usage: /mapcast span <game l,t,r,b> <map l,t,r,b>. Mapcast Companion shows the exact command (right-click it > Game window).")
+			return
+		end
+		ns.Layout:SetSpan(game, mapInsets)
+	elseif cmd == "normal" then
+		ns.Layout:SetNormal()
 	elseif cmd == "companion" then
 		ns.UI:ShowCompanionPopup(true)
 	elseif cmd == "debug" then

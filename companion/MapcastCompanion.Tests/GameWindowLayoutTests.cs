@@ -26,6 +26,23 @@ public class GameWindowLayoutTests
     }
 
     [Fact]
+    public void SpanOntoRightMonitor()
+    {
+        var plan = GameWindowLayout.PlanSpan(Primary, Right, new[] { Left });
+        Assert.NotNull(plan);
+        Assert.Equal(Rectangle.FromLTRB(0, -9, 5120, 1440), plan!.Value.Client);
+        // game inset: 9 px at the top (right monitor sits 9 px higher), 2560 px on the right
+        Assert.Equal("/mapcast span 0,9,2560,0 2560,0,0,9", plan.Value.Command);
+    }
+
+    [Fact]
+    public void SpanRefusedWhenItWouldCoverAThirdMonitor()
+    {
+        // Spanning from the far-left monitor to the right one would also cover the primary in between.
+        Assert.Null(GameWindowLayout.PlanSpan(Left, Right, new[] { Primary }));
+    }
+
+    [Fact]
     public void TargetClientCoversMonitorPlusStrip()
     {
         Assert.Equal(new Rectangle(0, -600, 2560, 2040), GameWindowLayout.TargetClient(Primary, StripEdge.Top, 600));

@@ -294,8 +294,8 @@ function Mirror:DebugReport()
 		if isLoaded(a) then add("addon loaded: %s %s", a, tostring(meta(a, "Version"))) end
 	end
 	local canvas = ns.Map.canvas
-	add("map: %s, visible %s, follow %s, offscreen %s", tostring(canvas and canvas:GetMapID()),
-		tostring(canvas and canvas:IsVisible()), tostring(ns.Map:IsFollowing()), tostring(ns.db.offscreenEdge))
+	add("map: %s, visible %s, follow %s, layout %s", tostring(canvas and canvas:GetMapID()),
+		tostring(canvas and canvas:IsVisible()), tostring(ns.Map:IsFollowing()), tostring(ns.Layout:Mode()))
 
 	add("")
 	add("LibStub libraries named HereBeDragons*:")

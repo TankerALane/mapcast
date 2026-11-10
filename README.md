@@ -81,8 +81,9 @@ The game must run in **Windowed** or **Windowed (Fullscreen)** mode.
 | `/mapcast follow` | Toggle auto-follow of your current zone |
 | `/mapcast capture` | Toggle capture mode for the companion |
 | `/mapcast reset` | Reset position, size and scale |
+| `/mapcast span ...` | Span mode: the map fills your second monitor. The companion shows the exact command |
 | `/mapcast offscreen top 600` | Off-screen mode: keep the map in a hidden 600 px strip at the top (or `bottom`) of the game window |
-| `/mapcast offscreen off` | Turn off-screen mode off |
+| `/mapcast normal` | Turn span / off-screen mode off |
 | `/mapcast companion` | Show the companion download info again |
 | `/mapcast options` | Open the options panel (also under *Options → AddOns → Mapcast*) |
 
@@ -96,24 +97,38 @@ Key bindings for show/hide, lock and capture mode are under *Key Bindings → Ad
 - **Alt+drag** moves the frame while it's unlocked, which is handy in capture mode where there's no title bar.
 - Pins are view-only: hovering shows the tooltip, clicking does nothing. That keeps Mapcast from interfering with the default map and the quest log.
 
+### Span mode (recommended): a full, interactive map on your second monitor
+
+The game window is stretched across your game monitor and the monitor next to it. Mapcast keeps the game on its own monitor and fills the other one with the map. Because the map is really part of the game window, it is drawn at full resolution and you control it with the mouse like any in-game map. There is no screen capture involved.
+
+1. Set the game's *Display Mode* to **Windowed** (not Windowed Fullscreen).
+2. In Mapcast Companion, right-click → **Game window → Span game onto *monitor***.
+3. Type the command the companion shows you, for example `/mapcast span 0,9,2560,0 2560,0,0,9`. Mapcast remembers it, and you can close the companion.
+
+- The monitors must sit next to each other with no third monitor in between.
+- While the game has focus, the second monitor belongs to the game window. Click another window to bring it in front.
+- The game renders a bigger window, so it may run a little slower.
+- If the game shrinks its window back on its own (for example after a restart), run *Span game onto...* again.
+- To undo: right-click → *Game window → Restore game window*, then `/mapcast normal`.
+
 ### Off-screen mode: no map on your game screen at all
 
 Windows captures the *whole* game window, including parts that hang off the edge of your monitors. Off-screen mode uses that:
 
 1. Set the game's *Display Mode* to **Windowed** (not Windowed Fullscreen).
-2. In Mapcast Companion, right-click → **Off-screen map → Hide the map off-screen**. The companion makes the game window taller than your monitor, so a strip of it (600 px by default) sits above (or below) the monitor where no screen shows it. The title bar goes up there too.
+2. In Mapcast Companion, right-click → **Game window → Hide the map off-screen**. The companion makes the game window taller than your monitor, so a strip of it (600 px by default) sits above (or below) the monitor where no screen shows it. The title bar goes up there too.
 3. Type the command the companion shows you, for example **`/mapcast offscreen top 600`**.
 
 Mapcast then puts the map in the hidden strip and keeps the rest of the game on your monitor: it insets the game UI and the 3D view to the visible part and adjusts the UI scale so everything stays the same size (the same mechanism the game uses for notched screens). These changes are made out of combat only.
 
 - It needs free space above or below the monitor the game is on (no other monitor directly there). The companion checks that for you.
 - The capture height plus border must fit in the strip (640×480 fits in 600).
-- To undo: right-click → *Off-screen map → Restore game window*, then `/mapcast offscreen off`.
-- Resizing the game window is the only thing the companion does to the game, and only when you choose this option. It's the same as dragging the window's edges.
+- To undo: right-click → *Game window → Restore game window*, then `/mapcast normal`.
+- Resizing the game window is the only thing the companion does to the game, and only when you choose a *Game window* option. It's the same as dragging the window's edges.
 
 ### Keeping the in-game frame out of the way
 
-Without off-screen mode, the companion can only copy what is actually drawn on screen, so **the Mapcast frame has to stay visible in the game window.** You can make it less intrusive:
+Without span or off-screen mode, the companion can only copy what is actually drawn on screen, so **the Mapcast frame has to stay visible in the game window.** You can make it less intrusive:
 
 - It defaults to a screen corner. Put it wherever it bothers you least.
 - In *Options → Mapcast → Capture mode*, set a **smaller capture size** (for example 320×240). The companion scales it up, so it looks softer on the second monitor.
@@ -124,7 +139,7 @@ Without off-screen mode, the companion can only copy what is actually drawn on s
 
 Mapcast Companion is **strictly passive screen capture.** It uses the standard Windows Graphics Capture API, the same one OBS, Discord and the Windows Snipping Tool use, to copy pixels from the game window as Windows composites them.
 
-The one exception is the optional *Off-screen map* command, which sets the size and position of the game window (exactly what dragging its edges does) when you click it.
+The one exception is the optional *Game window* commands, which set the size and position of the game window (exactly what dragging its edges does) when you click it.
 
 It does **not** read or write game memory, inject code or input, hook the game process, or automate gameplay in any way. The addon uses only the public World of Warcraft addon API. The two parts don't communicate except through what you can see on screen.
 

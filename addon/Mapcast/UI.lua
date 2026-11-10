@@ -278,15 +278,28 @@ function UI:CreateOptions()
 		function() return db.captureHeight end, function(v) db.captureHeight = v; Map:ApplyLayout() end)
 	sCapH:SetPoint("LEFT", sCapW, "RIGHT", 60, 0)
 
-	local cOff = Checkbox(panel, "Off-screen mode",
-		"Puts the map in a strip of the game window that no monitor shows. First use Mapcast Companion: " ..
-		"right-click > Off-screen map > Hide the map off-screen. It tells you the exact command, for example /mapcast offscreen top 600.",
-		function() return db.offscreenEdge ~= nil end,
-		function(v) ns.Offscreen:SetMode(v and (db.offscreenLastEdge or "TOP") or nil) end)
-	cOff:SetPoint("TOPLEFT", sCapW, "BOTTOMLEFT", -8, -26)
-	local offText = panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-	offText:SetPoint("LEFT", cOff.Text or cOff, "RIGHT", 8, 0)
-	offText:SetText("Hides the map completely. Needs the companion's \"Off-screen map\" option; hover for details.")
+	-- Screen layout (span / off-screen), set up from Mapcast Companion > Game window.
+	local layoutText = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+	layoutText:SetPoint("TOPLEFT", sCapW, "BOTTOMLEFT", -4, -28)
+	layoutText:SetWidth(470)
+	layoutText:SetJustifyH("LEFT")
+	local normal = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
+	normal:SetSize(120, 22)
+	normal:SetPoint("LEFT", layoutText, "RIGHT", 8, 0)
+	normal:SetText("Normal layout")
+	normal:SetScript("OnClick", function() ns.Layout:SetNormal() end)
+	layoutText.Refresh = function()
+		local mode = ns.Layout:Mode()
+		if mode == "span" then
+			layoutText:SetText("Layout: |cff4cd3b6span|r. The map fills your second monitor.")
+		elseif mode == "offscreen" then
+			layoutText:SetText("Layout: |cff4cd3b6off-screen|r. The map is in a hidden strip of the game window.")
+		else
+			layoutText:SetText("Layout: normal. For a map on your second monitor, use Mapcast Companion > Game window.")
+		end
+		normal:SetEnabled(mode ~= nil)
+	end
+	table.insert(widgets, layoutText)
 
 	panel:SetScript("OnShow", function() UI:RefreshOptions() end)
 
