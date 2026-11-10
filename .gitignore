@@ -2,6 +2,7 @@
 bin/
 obj/
 publish/
+dist-local/
 *.user
 *.suo
 .vs/

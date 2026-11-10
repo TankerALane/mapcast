@@ -90,6 +90,13 @@ local FRAME_LEVELS = {
 
 local function noop() end
 
+-- Capture layout (pixel exact, magenta border) is used in capture mode and
+-- always in off-screen mode.
+local function IsCapture()
+	return ns.db.captureMode or ns.Offscreen:IsActive()
+end
+ns.IsCapture = IsCapture
+
 ---------------------------------------------------------------------------
 -- Pin safety
 ---------------------------------------------------------------------------
@@ -325,6 +332,7 @@ function Map:Initialize()
 	ns.Mirror:CreateMixins()
 
 	self:CreateFrames()
+	ns.Offscreen:Initialize()
 	self:ApplyLayout()
 	self:SetShownSaved(ns.db.shown)
 end
@@ -415,7 +423,7 @@ function Map:CreateFrames()
 	grip:SetNormalTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Up")
 	grip:SetHighlightTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Highlight")
 	grip:SetPushedTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Down")
-	grip:SetScript("OnMouseDown", function() if not db.locked and not db.captureMode then f:StartSizing("BOTTOMRIGHT") end end)
+	grip:SetScript("OnMouseDown", function() if not db.locked and not IsCapture() then f:StartSizing("BOTTOMRIGHT") end end)
 	grip:SetScript("OnMouseUp", function() Map:StopMoving() end)
 
 	-- Capture-mode marker border: four solid textures, pixel exact.
@@ -508,7 +516,8 @@ end
 function Map:StopMoving()
 	local f = self.frame
 	f:StopMovingOrSizing()
-	if not ns.db.captureMode then
+	if ns.Offscreen:IsActive() then self:ApplyLayout() return end
+	if not IsCapture() then
 		ns.db.width, ns.db.height = f:GetSize()
 	end
 	self:SavePosition()
@@ -519,7 +528,18 @@ function Map:ApplyPosition()
 	local f, db = self.frame, ns.db
 	local s = f:GetScale()
 	f:ClearAllPoints()
-	if db.pos then
+	if ns.Offscreen:IsActive() then
+		-- Inside the hidden strip, pixel aligned, centred vertically, 8 px from the left.
+		local px = ns.Offscreen:Geometry() or 0
+		local upp = UnitsPerPixel(f)
+		local h = math.floor(f:GetHeight() / upp + 0.5)
+		local gap = math.max(0, math.floor((px - h) / 2))
+		if ns.db.offscreenEdge == "TOP" then
+			f:SetPoint("BOTTOMLEFT", UIParent, "TOPLEFT", 8 * upp, gap * upp)
+		else
+			f:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", 8 * upp, -gap * upp)
+		end
+	elseif db.pos then
 		local x, y = db.pos.x / s, db.pos.y / s
 		if db.captureMode then
 			local upp = UnitsPerPixel(f)
@@ -537,6 +557,10 @@ function Map:ApplyLayout()
 	local f, db, canvas = self.frame, ns.db, self.canvas
 	if not f then return end
 
+	-- Off-screen: no parent, so hiding the UI (Alt+Z) or UIParent's scale don't affect it.
+	local wantParent = ns.Offscreen:IsActive() and nil or UIParent
+	if f:GetParent() ~= wantParent then f:SetParent(wantParent) end
+
 	local strata = db.strata or "MEDIUM"
 	f:SetFrameStrata(strata)
 	canvas:SetFrameStrata(strata)
@@ -545,7 +569,7 @@ function Map:ApplyLayout()
 
 	canvas:ClearAllPoints()
 	self.headerHover = nil
-	if db.captureMode then
+	if IsCapture() then
 		f:SetScale(1)
 		local upp = UnitsPerPixel(f)
 		local b = db.captureBorder
@@ -576,7 +600,7 @@ function Map:ApplyLayout()
 end
 
 function Map:UpdateBorder()
-	if not ns.db.captureMode then return end
+	if not IsCapture() then return end
 	local f = self.frame
 	local upp = UnitsPerPixel(f)
 	local b = ns.db.captureBorder * upp
@@ -773,6 +797,7 @@ end
 ---------------------------------------------------------------------------
 function Map:OnEvent(event)
 	if event == "UI_SCALE_CHANGED" or event == "DISPLAY_SIZE_CHANGED" then
+		if ns.Offscreen:IsActive() then ns.Offscreen:Apply() end
 		self:ApplyLayout()
 		return
 	end
@@ -798,7 +823,7 @@ function Map:FastTick()
 	if not f:IsVisible() then return end
 
 	-- Locked: show the header as an overlay only while hovering.
-	if db.locked and not db.captureMode then
+	if db.locked and not IsCapture() then
 		local over = f:IsMouseOver()
 		if over ~= self.headerHover then
 			self.headerHover = over
@@ -813,6 +838,7 @@ end
 
 function Map:SlowTick()
 	local f, db = self.frame, ns.db
+	ns.Offscreen:Check()
 	if not f:IsVisible() then return end
 	if self.followPausedAt and db.autoResume > 0 and not f:IsMouseOver()
 		and GetTime() - self.followPausedAt >= db.autoResume then

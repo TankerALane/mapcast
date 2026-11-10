@@ -40,6 +40,7 @@ local DEFAULTS = {
 	captureHeight = 480,
 	captureBorder = 4,       -- physical pixels
 	popupDismissed = false,
+	offscreenPixels = 600,   -- off-screen mode strip, physical pixels (offscreenEdge = "TOP"/"BOTTOM" when on)
 }
 ns.DEFAULTS = DEFAULTS
 
@@ -89,6 +90,8 @@ local HELP = {
 	"/mapcast follow - toggle auto-follow of your current zone",
 	"/mapcast capture - toggle capture mode (for Mapcast Companion)",
 	"/mapcast reset - reset position, size and scale",
+	"/mapcast offscreen top|bottom <pixels> - keep the map in a hidden strip of the game window (see Mapcast Companion)",
+	"/mapcast offscreen off - bring the map back on screen",
 	"/mapcast companion - how to show Mapcast on a second monitor",
 	"/mapcast options - open the options panel",
 }
@@ -113,6 +116,28 @@ local function HandleSlash(msg)
 		Mapcast_ToggleCapture()
 	elseif cmd == "reset" then
 		map:ResetLayout(); ns.Print("position, size and scale reset.")
+	elseif cmd == "offscreen" then
+		local arg1, arg2 = (msg or ""):lower():match("^%s*%S+%s*(%S*)%s*(%S*)")
+		local edge, px
+		if arg1 == "off" then
+			ns.Offscreen:SetMode(nil)
+			return
+		elseif arg1 == "top" or arg1 == "bottom" then
+			edge, px = arg1:upper(), tonumber(arg2)
+		elseif tonumber(arg1) then
+			edge, px = ns.db.offscreenLastEdge or "TOP", tonumber(arg1)
+		elseif arg1 == "" then
+			edge = ns.db.offscreenLastEdge or "TOP"
+		else
+			ns.Print("usage: /mapcast offscreen top|bottom <pixels>, or /mapcast offscreen off")
+			return
+		end
+		if px and (px < 100 or px > 3000) then
+			ns.Print("the strip must be between 100 and 3000 pixels.")
+			return
+		end
+		ns.db.offscreenLastEdge = edge
+		ns.Offscreen:SetMode(edge, px and math.floor(px))
 	elseif cmd == "companion" then
 		ns.UI:ShowCompanionPopup(true)
 	elseif cmd == "debug" then

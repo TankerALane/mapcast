@@ -81,6 +81,8 @@ The game must run in **Windowed** or **Windowed (Fullscreen)** mode.
 | `/mapcast follow` | Toggle auto-follow of your current zone |
 | `/mapcast capture` | Toggle capture mode for the companion |
 | `/mapcast reset` | Reset position, size and scale |
+| `/mapcast offscreen top 600` | Off-screen mode: keep the map in a hidden 600 px strip at the top (or `bottom`) of the game window |
+| `/mapcast offscreen off` | Turn off-screen mode off |
 | `/mapcast companion` | Show the companion download info again |
 | `/mapcast options` | Open the options panel (also under *Options → AddOns → Mapcast*) |
 
@@ -94,9 +96,24 @@ Key bindings for show/hide, lock and capture mode are under *Key Bindings → Ad
 - **Alt+drag** moves the frame while it's unlocked, which is handy in capture mode where there's no title bar.
 - Pins are view-only: hovering shows the tooltip, clicking does nothing. That keeps Mapcast from interfering with the default map and the quest log.
 
+### Off-screen mode: no map on your game screen at all
+
+Windows captures the *whole* game window, including parts that hang off the edge of your monitors. Off-screen mode uses that:
+
+1. Set the game's *Display Mode* to **Windowed** (not Windowed Fullscreen).
+2. In Mapcast Companion, right-click → **Off-screen map → Hide the map off-screen**. The companion makes the game window taller than your monitor, so a strip of it (600 px by default) sits above (or below) the monitor where no screen shows it. The title bar goes up there too.
+3. Type the command the companion shows you, for example **`/mapcast offscreen top 600`**.
+
+Mapcast then puts the map in the hidden strip and keeps the rest of the game on your monitor: it insets the game UI and the 3D view to the visible part and adjusts the UI scale so everything stays the same size (the same mechanism the game uses for notched screens). These changes are made out of combat only.
+
+- It needs free space above or below the monitor the game is on (no other monitor directly there). The companion checks that for you.
+- The capture height plus border must fit in the strip (640×480 fits in 600).
+- To undo: right-click → *Off-screen map → Restore game window*, then `/mapcast offscreen off`.
+- Resizing the game window is the only thing the companion does to the game, and only when you choose this option. It's the same as dragging the window's edges.
+
 ### Keeping the in-game frame out of the way
 
-The companion can only copy what is actually drawn on screen, so **the Mapcast frame has to stay visible in the game window.** You can make it less intrusive:
+Without off-screen mode, the companion can only copy what is actually drawn on screen, so **the Mapcast frame has to stay visible in the game window.** You can make it less intrusive:
 
 - It defaults to a screen corner. Put it wherever it bothers you least.
 - In *Options → Mapcast → Capture mode*, set a **smaller capture size** (for example 320×240). The companion scales it up, so it looks softer on the second monitor.
@@ -107,6 +124,8 @@ The companion can only copy what is actually drawn on screen, so **the Mapcast f
 
 Mapcast Companion is **strictly passive screen capture.** It uses the standard Windows Graphics Capture API, the same one OBS, Discord and the Windows Snipping Tool use, to copy pixels from the game window as Windows composites them.
 
+The one exception is the optional *Off-screen map* command, which sets the size and position of the game window (exactly what dragging its edges does) when you click it.
+
 It does **not** read or write game memory, inject code or input, hook the game process, or automate gameplay in any way. The addon uses only the public World of Warcraft addon API. The two parts don't communicate except through what you can see on screen.
 
 Mapcast is not affiliated with or endorsed by Blizzard Entertainment.
@@ -115,7 +134,8 @@ Mapcast is not affiliated with or endorsed by Blizzard Entertainment.
 
 - **Exclusive fullscreen can't be captured.** Use Windowed or Windowed (Fullscreen).
 - **Minimised game = frozen map.** Windows doesn't render minimised windows, so the companion shows the last frame until you restore the game.
-- **The in-game frame must stay on screen** and uncovered (see above).
+- **The in-game frame must stay on screen** and uncovered, unless you use off-screen mode (see above).
+- **Off-screen mode** needs Windowed mode and free desktop space above or below the game's monitor. A thin window border or shadow may show on a monitor next to the game. Cinematics briefly use the full window.
 - **Third-party pins are copies.** Mapcast mirrors pins from addons built on HereBeDragons-Pins (Questie, TomTom, HandyNotes, GatherMate2, ...). Pins drawn some other way only appear on the `M` map. Mirrored pins show their addon's tooltip on hover, but clicks aren't forwarded.
 - **Pin clicks are disabled** on the Mapcast map (see *On the map*).
 - **Windows 11 capture border:** Windows may draw a thin yellow border around the game window while it is captured. Mapcast Companion asks Windows to hide it where that is supported.

@@ -14,7 +14,7 @@ Open an [issue](https://github.com/TankerALane/mapcast/issues) and include:
 
 - Keep changes focused, and explain *why* in the description.
 - **Addon:** test in game, including that the default `M` map and the quest log still work in and out of combat. Don't add code that calls protected functions or modifies Blizzard frames and tables.
-- **Companion:** run `dotnet test companion/MapcastCompanion.Tests`. The companion must stay **passive**: no memory reading, no input injection, no automation.
+- **Companion:** run `dotnet test companion/MapcastCompanion.Tests`. The companion must stay **passive**: no memory reading, no input injection, no automation. The only thing it may do to the game window is the user-triggered resize for off-screen mode.
 - The addon package must not contain executables (CurseForge rules).
 - The marker colour lives in two places, `addon/Mapcast/Core.lua` and `MarkerDetector.cs`. Keep them in sync.
 

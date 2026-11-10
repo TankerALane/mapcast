@@ -278,6 +278,16 @@ function UI:CreateOptions()
 		function() return db.captureHeight end, function(v) db.captureHeight = v; Map:ApplyLayout() end)
 	sCapH:SetPoint("LEFT", sCapW, "RIGHT", 60, 0)
 
+	local cOff = Checkbox(panel, "Off-screen mode",
+		"Puts the map in a strip of the game window that no monitor shows. First use Mapcast Companion: " ..
+		"right-click > Off-screen map > Hide the map off-screen. It tells you the exact command, for example /mapcast offscreen top 600.",
+		function() return db.offscreenEdge ~= nil end,
+		function(v) ns.Offscreen:SetMode(v and (db.offscreenLastEdge or "TOP") or nil) end)
+	cOff:SetPoint("TOPLEFT", sCapW, "BOTTOMLEFT", -8, -26)
+	local offText = panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+	offText:SetPoint("LEFT", cOff.Text or cOff, "RIGHT", 8, 0)
+	offText:SetText("Hides the map completely. Needs the companion's \"Off-screen map\" option; hover for details.")
+
 	panel:SetScript("OnShow", function() UI:RefreshOptions() end)
 
 	if Settings and Settings.RegisterCanvasLayoutCategory then

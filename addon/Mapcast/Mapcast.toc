@@ -13,4 +13,5 @@ Core.lua
 Mapcast.xml
 Map.lua
 Mirror.lua
+Offscreen.lua
 UI.lua

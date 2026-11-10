@@ -14,6 +14,9 @@ public sealed class AppSettings
     public bool AutoDetect { get; set; } = true;
     public int[]? ManualRegion { get; set; }    // x, y, width, height in captured-window pixels
     public string? TargetTitle { get; set; }    // null = find World of Warcraft automatically
+    public int OffscreenStrip { get; set; } = 600;      // physical pixels hidden above/below the monitor
+    public bool OffscreenPreferBottom { get; set; }      // default: hide the strip above the monitor
+    public int[]? GameWindowBefore { get; set; }         // game window rect before "hide off-screen"
 
     private static string Dir => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MapcastCompanion");
     private static string FilePath => Path.Combine(Dir, "settings.json");

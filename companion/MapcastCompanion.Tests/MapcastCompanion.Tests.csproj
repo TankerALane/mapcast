@@ -17,5 +17,6 @@
   <ItemGroup>
     <!-- Test the detector source directly; it has no UI or capture dependencies. -->
     <Compile Include="..\MapcastCompanion\Capture\MarkerDetector.cs" Link="MarkerDetector.cs" />
+    <Compile Include="..\MapcastCompanion\Interop\GameWindowLayout.cs" Link="GameWindowLayout.cs" />
   </ItemGroup>
 </Project>
