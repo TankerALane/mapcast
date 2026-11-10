@@ -1,0 +1,19 @@
+# BigWigs packager config (https://github.com/BigWigsMods/packager)
+# The addon lives in addon/Mapcast; everything else in the repo is excluded.
+package-as: Mapcast
+
+move-folders:
+  Mapcast/addon/Mapcast: Mapcast
+
+enable-nolib-creation: no
+
+manual-changelog:
+  filename: CHANGELOG.md
+  markup-type: markdown
+
+ignore:
+  - companion
+  - assets
+  - README.md
+  - CONTRIBUTING.md
+  - LICENSE

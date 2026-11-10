@@ -1,0 +1,110 @@
+# Runs ONLY when a version tag (v1.2.3, v1.2.3-beta1, ...) is pushed. Nothing runs on normal pushes.
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  companion:
+    name: Build Mapcast Companion
+    runs-on: windows-latest
+    outputs:
+      exe: ${{ steps.pkg.outputs.exe }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Work out version from tag
+        id: ver
+        shell: bash
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          echo "prefix=${tag%%-*}" >> "$GITHUB_OUTPUT"
+          if [[ "$tag" == *-* ]]; then echo "suffix=${tag#*-}" >> "$GITHUB_OUTPUT"; else echo "suffix=" >> "$GITHUB_OUTPUT"; fi
+
+      - name: Test
+        run: dotnet test companion/MapcastCompanion.Tests/MapcastCompanion.Tests.csproj -c Release
+
+      - name: Publish self-contained single-file exe
+        run: >
+          dotnet publish companion/MapcastCompanion/MapcastCompanion.csproj -c Release -o out
+          -p:VersionPrefix=${{ steps.ver.outputs.prefix }}
+          -p:VersionSuffix=${{ steps.ver.outputs.suffix }}
+
+      - name: Name and checksum
+        id: pkg
+        shell: pwsh
+        run: |
+          $exe = "MapcastCompanion-$($env:GITHUB_REF_NAME)-win-x64.exe"
+          New-Item -ItemType Directory dist | Out-Null
+          Move-Item out/MapcastCompanion.exe "dist/$exe"
+          $hash = (Get-FileHash "dist/$exe" -Algorithm SHA256).Hash.ToLower()
+          "$hash  $exe" | Out-File -Encoding ascii -NoNewline "dist/$exe.sha256"
+          Get-Content "dist/$exe.sha256"
+          "exe=$exe" >> $env:GITHUB_OUTPUT
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: companion
+          path: dist/*
+          if-no-files-found: error
+
+  release:
+    name: Package addon and publish release
+    needs: companion
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # packager needs history and tags
+
+      - name: Package addon and upload to CurseForge
+        uses: BigWigsMods/packager@v2
+        env:
+          CF_API_KEY: ${{ secrets.CF_API_KEY }}
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: companion
+          path: dist
+
+      - name: Release notes
+        shell: bash
+        run: |
+          ver="${GITHUB_REF_NAME#v}"
+          # Section of CHANGELOG.md for this version (between "## [ver]" and the next "## ").
+          awk -v v="$ver" '$0 ~ "^## \[" v "\]" {on=1; next} /^## / {if (on) exit} on' CHANGELOG.md > notes.md
+          cat >> notes.md <<NOTES
+
+          ### Downloads
+          - **Mapcast** (the addon): install from CurseForge, or use the \`Mapcast-*.zip\` below.
+          - **Mapcast Companion** (Windows): \`${{ needs.companion.outputs.exe }}\`. Portable, no installer.
+
+          The exe is not code-signed, so Windows SmartScreen may warn the first time you run it.
+          Verify the download against \`${{ needs.companion.outputs.exe }}.sha256\` (PowerShell: \`Get-FileHash <file> -Algorithm SHA256\`).
+          See the README for details.
+          NOTES
+          cat notes.md
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Mapcast ${{ github.ref_name }}
+          body_path: notes.md
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          files: |
+            dist/*
+            .release/*.zip
+          fail_on_unmatched_files: true
