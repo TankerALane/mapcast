@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Mapcast Companion mark: the Mapcast mark with the map inside a monitor outline. -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0E1E2E"/>
+      <stop offset="1" stop-color="#081420"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <!-- monitor outline -->
+  <rect x="62" y="262" width="388" height="190" rx="20" fill="none" stroke="#4CD3B6" stroke-width="18"/>
+  <rect x="238" y="452" width="36" height="22" fill="#4CD3B6"/>
+  <rect x="180" y="470" width="152" height="18" rx="9" fill="#4CD3B6"/>
+  <!-- folded map inside the screen -->
+  <path d="M104 318 L208 296 L208 410 L104 432 Z" fill="#F4F1EA"/>
+  <path d="M208 296 L304 318 L304 432 L208 410 Z" fill="#CFC8B8"/>
+  <path d="M304 318 L408 296 L408 410 L304 432 Z" fill="#F4F1EA"/>
+  <!-- broadcast arcs -->
+  <g fill="none" stroke="#4CD3B6" stroke-width="24" stroke-linecap="round">
+    <path d="M322.8 80.3 A104 104 0 0 1 353.7 195.6"/>
+    <path d="M349.8 48.2 A146 146 0 0 1 393.2 210.0"/>
+    <path d="M189.2 80.3 A104 104 0 0 0 158.3 195.6"/>
+    <path d="M162.2 48.2 A146 146 0 0 0 118.8 210.0"/>
+  </g>
+  <!-- location pin -->
+  <path d="M256 366 C 238 330 186 260 186 162 A70 70 0 1 1 326 162 C 326 260 274 330 256 366 Z" fill="#E0904F"/>
+  <circle cx="256" cy="160" r="27" fill="#0E1E2E"/>
+</svg>

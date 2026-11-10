@@ -1,0 +1,22 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/ui/ ..\FrameXML\UI.xsd">
+	<!--
+		Mapcast's own map canvas. This is a second MapCanvas instance (the same pattern
+		Blizzard uses for the Battlefield/zone map), so the real WorldMapFrame is never
+		touched. Instantiated at runtime from Map.lua once Blizzard_MapCanvas is loaded.
+	-->
+	<Frame name="MapcastCanvasTemplate" inherits="MapCanvasFrameTemplate" mixin="MapcastCanvasMixin" virtual="true">
+		<Frames>
+			<ScrollFrame parentKey="ScrollContainer" inherits="MapCanvasFrameScrollContainerTemplate">
+				<Anchors>
+					<Anchor point="TOPLEFT"/>
+					<Anchor point="BOTTOMRIGHT"/>
+				</Anchors>
+			</ScrollFrame>
+		</Frames>
+	</Frame>
+
+	<!-- Visual copy of a third-party (HereBeDragons) world map pin. See Mirror.lua. -->
+	<Frame name="MapcastMirrorPinTemplate" mixin="MapcastMirrorPinMixin" enableMouse="true" virtual="true">
+		<Size x="16" y="16"/>
+	</Frame>
+</Ui>

@@ -1,0 +1,11 @@
+<Bindings>
+	<Binding name="MAPCAST_TOGGLE" header="MAPCAST" category="ADDONS">
+		Mapcast_Toggle()
+	</Binding>
+	<Binding name="MAPCAST_LOCK" category="ADDONS">
+		Mapcast_ToggleLock()
+	</Binding>
+	<Binding name="MAPCAST_CAPTURE" category="ADDONS">
+		Mapcast_ToggleCapture()
+	</Binding>
+</Bindings>

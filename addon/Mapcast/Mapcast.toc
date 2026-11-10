@@ -1,0 +1,16 @@
+## Interface: 16001
+## Title: Mapcast
+## Notes: A standalone, always-on world map. Pair it with Mapcast Companion to show it on a second monitor.
+## Author: Decoupled Lane Studio
+## Version: @project-version@
+## IconTexture: Interface\AddOns\Mapcast\Media\Mapcast
+## SavedVariables: MapcastDB
+## X-Curse-Project-ID: 1795400
+## X-License: MIT
+## X-Website: https://github.com/TankerALane/mapcast
+
+Core.lua
+Mapcast.xml
+Map.lua
+Mirror.lua
+UI.lua
