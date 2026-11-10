@@ -279,22 +279,70 @@ function Mirror:CreateMixins()
 	end
 end
 
-function Mirror:PrintDebug()
-	local libNames = {}
-	for _, e in ipairs(libs) do table.insert(libNames, e.name) end
-	ns.Print("pin libraries found: " .. (#libNames > 0 and table.concat(libNames, ", ") or "none"))
+-- Builds a plain-text report (shown in a copyable box by /mapcast debug).
+function Mirror:DebugReport()
+	local out = {}
+	local function add(fmt, ...) table.insert(out, select("#", ...) > 0 and fmt:format(...) or fmt) end
+	local isLoaded = C_AddOns and C_AddOns.IsAddOnLoaded or IsAddOnLoaded
+	local meta = C_AddOns and C_AddOns.GetAddOnMetadata or GetAddOnMetadata
+	local version, build, _, toc = GetBuildInfo()
+
+	add("Mapcast %s, client %s (%s), interface %s", ns.VERSION, tostring(version), tostring(build), tostring(toc))
+	for _, a in ipairs({ "Questie", "TomTom", "HandyNotes", "GatherMate2" }) do
+		if isLoaded(a) then add("addon loaded: %s %s", a, tostring(meta(a, "Version"))) end
+	end
+	local canvas = ns.Map.canvas
+	add("map: %s, visible %s, follow %s, offscreen %s", tostring(canvas and canvas:GetMapID()),
+		tostring(canvas and canvas:IsVisible()), tostring(ns.Map:IsFollowing()), tostring(ns.db.offscreenEdge))
+
+	add("")
+	add("LibStub libraries named HereBeDragons*:")
+	local any = false
+	if LibStub and LibStub.IterateLibraries then
+		for name, lib in LibStub:IterateLibraries() do
+			if type(name) == "string" and name:find("HereBeDragons") then
+				any = true
+				local n = 0
+				if type(lib) == "table" and type(lib.worldmapPins) == "table" then
+					for _ in pairs(lib.worldmapPins) do n = n + 1 end
+				end
+				add("  %s  worldmapPins=%s  mapData=%s", name,
+					type(lib) == "table" and type(lib.worldmapPins) == "table" and tostring(n) or "-",
+					type(lib) == "table" and lib.mapData and "yes" or "-")
+			end
+		end
+	else
+		add("  LibStub not available")
+	end
+	if not any then add("  none") end
+
+	add("")
+	add("Libraries Mapcast mirrors: %d", #libs)
 	local s = self.stats
 	if not s then
-		ns.Print("the mirror hasn't refreshed yet.")
-		return
+		add("The mirror hasn't refreshed yet (is the map shown?).")
+	else
+		add("Last refresh %s on map %s:", s.time, tostring(s.mapID))
+		for _, l in ipairs(s.libs) do
+			add("  %s: %d registered, %d hidden, %d not on this map, %d drawn", l.name, l.registered, l.hidden, l.notHere, l.placed)
+			if l.placeError then add("    place error: %s", l.placeError) end
+			if l.acquireError then add("    draw error: %s", l.acquireError) end
+		end
 	end
-	ns.Print(("last refresh %s on map %s:"):format(s.time, tostring(s.mapID)))
-	for _, l in ipairs(s.libs) do
-		ns.Print(("  %s: %d registered, %d hidden, %d not on this map, %d drawn%s%s"):format(l.name, l.registered,
-			l.hidden, l.notHere, l.placed,
-			l.placeError and (" |cffff5555place error: " .. l.placeError .. "|r") or "",
-			l.acquireError and (" |cffff5555draw error: " .. l.acquireError .. "|r") or ""))
+
+	-- A few raw pin records, to compare against the map Mapcast shows.
+	for _, e in ipairs(libs) do
+		local shown = 0
+		for icon, d in pairs(e.pins.worldmapPins) do
+			if shown >= 5 then break end
+			shown = shown + 1
+			add("  sample %s: uiMapID=%s instance=%s x=%.1f y=%.1f flag=%s hidden=%s shown=%s", e.name,
+				tostring(d.uiMapID), tostring(d.instanceID), tonumber(d.x) or -1, tonumber(d.y) or -1,
+				tostring(d.worldMapShowFlag), tostring(type(icon) == "table" and icon.hidden),
+				tostring(type(icon) == "table" and icon.IsShown and icon:IsShown()))
+		end
 	end
+	return table.concat(out, "\n")
 end
 
 function Mirror:Attach(canvas)

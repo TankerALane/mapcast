@@ -315,3 +315,61 @@ end
 function UI:Initialize()
 	self:CreateOptions()
 end
+
+---------------------------------------------------------------------------
+-- Copyable text box (chat text can't be copied, so reports go here)
+---------------------------------------------------------------------------
+function UI:ShowCopyBox(titleText, text)
+	local f = self.copyBox
+	if not f then
+		f = CreateFrame("Frame", "MapcastCopyBox", UIParent, "BackdropTemplate")
+		f:SetSize(620, 420)
+		f:SetPoint("CENTER")
+		f:SetFrameStrata("DIALOG")
+		f:SetMovable(true)
+		f:EnableMouse(true)
+		f:RegisterForDrag("LeftButton")
+		f:SetScript("OnDragStart", f.StartMoving)
+		f:SetScript("OnDragStop", f.StopMovingOrSizing)
+		f:SetClampedToScreen(true)
+		f:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8x8", edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = 2 })
+		f:SetBackdropColor(0.031, 0.078, 0.125, 0.97)
+		f:SetBackdropBorderColor(0.298, 0.827, 0.714, 1)
+		tinsert(UISpecialFrames, "MapcastCopyBox") -- Escape closes it
+
+		f.Title = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+		f.Title:SetPoint("TOPLEFT", 14, -12)
+
+		local hint = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+		hint:SetPoint("TOPRIGHT", -36, -16)
+		hint:SetText("Text is selected: press Ctrl+C to copy")
+
+		local close = CreateFrame("Button", nil, f, "UIPanelCloseButton")
+		close:SetPoint("TOPRIGHT", -2, -2)
+
+		local scroll = CreateFrame("ScrollFrame", nil, f, "UIPanelScrollFrameTemplate")
+		scroll:SetPoint("TOPLEFT", 14, -40)
+		scroll:SetPoint("BOTTOMRIGHT", -32, 14)
+
+		local edit = CreateFrame("EditBox", nil, scroll)
+		edit:SetMultiLine(true)
+		edit:SetAutoFocus(false)
+		edit:SetFontObject(ChatFontNormal)
+		edit:SetWidth(560)
+		edit:SetScript("OnEscapePressed", function() f:Hide() end)
+		-- Read-only: typing puts the report back.
+		edit:SetScript("OnTextChanged", function(self, userInput)
+			if userInput then self:SetText(f.text or ""); self:HighlightText() end
+		end)
+		edit:SetScript("OnMouseUp", function(self) self:HighlightText() end)
+		scroll:SetScrollChild(edit)
+		f.Edit = edit
+		self.copyBox = f
+	end
+	f.text = text or ""
+	f.Title:SetText(titleText or "Mapcast")
+	f.Edit:SetText(f.text)
+	f:Show()
+	f.Edit:SetFocus()
+	f.Edit:HighlightText()
+end

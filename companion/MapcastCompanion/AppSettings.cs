@@ -5,9 +5,10 @@ namespace MapcastCompanion;
 /// <summary>User preferences, stored in %LOCALAPPDATA%\MapcastCompanion\settings.json.</summary>
 public sealed class AppSettings
 {
+    public int Version { get; set; }               // 0 = file written before versioning
     public int[]? Bounds { get; set; }          // x, y, width, height of the viewer window
     public bool Borderless { get; set; }
-    public bool TopMost { get; set; } = true;
+    public bool TopMost { get; set; }               // off: a topmost viewer can hide the game's own dialogs
     public bool KeepAspect { get; set; } = true;
     public bool Smooth { get; set; } = true;
     public int Fps { get; set; } = 30;
@@ -17,6 +18,8 @@ public sealed class AppSettings
     public int OffscreenStrip { get; set; } = 600;      // physical pixels hidden above/below the monitor
     public bool OffscreenPreferBottom { get; set; }      // default: hide the strip above the monitor
     public int[]? GameWindowBefore { get; set; }         // game window rect before "hide off-screen"
+
+    private const int CurrentVersion = 2;
 
     private static string Dir => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MapcastCompanion");
     private static string FilePath => Path.Combine(Dir, "settings.json");
@@ -28,10 +31,16 @@ public sealed class AppSettings
         try
         {
             if (File.Exists(FilePath))
-                return JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(FilePath), Options) ?? new AppSettings();
+            {
+                var s = JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(FilePath), Options) ?? new AppSettings { Version = CurrentVersion };
+                // Files from before Version existed deserialize with Version = 0: always-on-top defaulted to on then.
+                if (s.Version < 2) s.TopMost = false;
+                s.Version = CurrentVersion;
+                return s;
+            }
         }
         catch { /* corrupt file: start fresh */ }
-        return new AppSettings();
+        return new AppSettings { Version = CurrentVersion };
     }
 
     public void Save()

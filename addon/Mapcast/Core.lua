@@ -143,7 +143,7 @@ local function HandleSlash(msg)
 	elseif cmd == "debug" then
 		ns.Mirror:DiscoverLibs()
 		ns.Mirror:Refresh()
-		ns.Mirror:PrintDebug()
+		ns.UI:ShowCopyBox("Mapcast debug", ns.Mirror:DebugReport())
 	elseif cmd == "options" or cmd == "config" then
 		ns.UI:OpenOptions()
 	else
